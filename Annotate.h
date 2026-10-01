@@ -14,7 +14,7 @@
 #include "llvm/ADT/STLFunctionalExtras.h"
 #include "llvm/Support/raw_ostream.h"
 
-namespace zero {
+namespace sign {
 
 /// `describe` returns the annotation for a value, or an empty string to leave
 /// that value unannotated.  It is passed an AsmState so it can print SSA names

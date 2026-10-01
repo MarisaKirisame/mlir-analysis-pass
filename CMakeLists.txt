@@ -99,14 +99,14 @@ add_definitions(${LLVM_DEFINITIONS})
 # Linux and WSL2.  Nothing in this project should spell that suffix out;
 # ask CMake via $<TARGET_FILE:ZeroAnalysis>, or let run.sh probe for it.
 #===----------------------------------------------------------------------===#
-add_llvm_library(ZeroAnalysis MODULE PARTIAL_SOURCES_INTENDED
-  ZeroAnalysis.cpp
+add_llvm_library(SignAnalysis MODULE PARTIAL_SOURCES_INTENDED
+  SignAnalysis.cpp
   Annotate.cpp
   Plugin.cpp
   PLUGIN_TOOL mlir-opt
 )
 
-set_target_properties(ZeroAnalysis PROPERTIES
+set_target_properties(SignAnalysis PROPERTIES
   LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")
 
 #===----------------------------------------------------------------------===#

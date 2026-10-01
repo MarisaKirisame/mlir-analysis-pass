@@ -5,7 +5,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "Annotate.h"
-#include "ZeroAnalysis.h"
+#include "SignAnalysis.h"
 
 #include "mlir/Analysis/DataFlow/ConstantPropagationAnalysis.h"
 #include "mlir/Analysis/DataFlow/DeadCodeAnalysis.h"
@@ -20,16 +20,16 @@
 
 using namespace mlir;
 
-namespace {
+namespace sign {
 
-struct ZeroAnalysisPass
-    : PassWrapper<ZeroAnalysisPass, OperationPass<ModuleOp>> {
-  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(ZeroAnalysisPass)
+struct SignAnalysisPass
+    : PassWrapper<SignAnalysisPass, OperationPass<ModuleOp>> {
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(SignAnalysisPass)
 
-  StringRef getArgument() const final { return "zero-analysis"; }
+  StringRef getArgument() const final { return "sign-analysis"; }
 
   StringRef getDescription() const final {
-    return "Determine which integer values are known zero or known nonzero";
+    return "Determine sign";
   }
 
   void runOnOperation() override {
@@ -42,32 +42,32 @@ struct ZeroAnalysisPass
     // conditions for it.  Both are prerequisites, not extras.
     solver.load<dataflow::DeadCodeAnalysis>();
     solver.load<dataflow::SparseConstantPropagation>();
-    solver.load<zero::ZeroAnalysis>();
+    solver.load<sign::SignAnalysis>();
 
     if (failed(solver.initializeAndRun(getOperation()))) {
-      getOperation().emitError("zero analysis failed to reach a fixed point");
+      getOperation().emitError("sign analysis failed to reach a fixed point");
       return signalPassFailure();
     }
 
     // Query states only now that the solver has converged.
     auto describe = [&](Value value, AsmState &asmState) -> std::string {
-      const auto *lattice = solver.lookupState<zero::ZeroLattice>(value);
+      const auto *lattice = solver.lookupState<sign::SignLattice>(value);
       if (!lattice)
         return {};
-      zero::Kind kind = lattice->getValue().kind;
+      auto kind = lattice->getValue();
       // Top and bottom say nothing; printing them would bury the real facts.
-      if (kind == zero::Kind::Top || kind == zero::Kind::Bottom)
+      if (kind.isBottom() || kind.isTop())
         return {};
       std::string description;
       llvm::raw_string_ostream os(description);
       value.printAsOperand(os, asmState);
-      os << " is " << zero::name(kind);
+      os << " is " << kind;
       return description;
     };
 
     // stderr, so that mlir-opt's stdout stays the unmodified IR and the two can
     // be redirected independently.
-    zero::printAnnotated(getOperation(), describe, llvm::errs());
+    sign::printAnnotated(getOperation(), describe, llvm::errs());
 
     // This pass only reads.
     markAllAnalysesPreserved();
@@ -79,6 +79,6 @@ struct ZeroAnalysisPass
 extern "C" LLVM_ATTRIBUTE_WEAK PassPluginLibraryInfo mlirGetPassPluginInfo() {
   // LLVM_VERSION_STRING is baked in at compile time and checked by mlir-opt at
   // load time, which is what turns an ABI mismatch into a clear diagnostic.
-  return {MLIR_PLUGIN_API_VERSION, "ZeroAnalysis", LLVM_VERSION_STRING,
-          []() { PassRegistration<ZeroAnalysisPass>(); }};
+  return {MLIR_PLUGIN_API_VERSION, "SignAnalysis", LLVM_VERSION_STRING,
+          []() { PassRegistration<sign::SignAnalysisPass>(); }};
 }
